@@ -552,23 +552,29 @@ document.getElementById('searchInput').addEventListener('keydown', e=>{
 
 /* ---- Access gate (light deterrent, not real security: this is a static file,
    so anyone holding it can still view its source with enough effort) ---- */
-const GATE_HASH = "4978904f312927f102b0a6783b41e730d8f8252072844817fa5d8a4b4b2de0a4";
+const GATE_HASH = "543157ed4d2264a2ff23af60b53e061a7ba8f17b25d19ed51d4d40617f83a300";
 async function sha256hex(text){
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
   return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
 }
 function normalizeDigits(s){
-  // Arabic keyboards often type Arabic-Indic or Extended Arabic-Indic digits;
-  // normalize those (and stray whitespace) to plain Western digits before hashing,
-  // so the password still matches regardless of keyboard/language mode.
+  // Arabic keyboards often type Arabic-Indic or Extended Arabic-Indic digits,
+  // and mobile predictive/autocorrect can silently insert invisible marks
+  // (zero-width joiners, RTL/LTR marks) or diacritics/tatweel around the text.
+  // Strip/normalize all of that (and stray whitespace) before hashing, so the
+  // password still matches regardless of keyboard/language mode or device.
+  s = s.normalize ? s.normalize('NFKC') : s;
+  s = s.replace(/[​-‏؜﻿]/g, '');      // invisible marks
+  s = s.replace(/[ً-ْٰـ]/g, '');       // diacritics + tatweel
   const arabicIndic = '٠١٢٣٤٥٦٧٨٩', extendedArabicIndic = '۰۱۲۳۴۵۶۷۸۹';
-  return s.trim().replace(/[٠-٩۰-۹]/g, ch=>{
+  s = s.replace(/[٠-٩۰-۹]/g, ch=>{
     let i = arabicIndic.indexOf(ch);
     if(i>=0) return String(i);
     i = extendedArabicIndic.indexOf(ch);
     if(i>=0) return String(i);
     return ch;
   });
+  return s.trim();
 }
 async function checkGate(){
   const val = normalizeDigits(document.getElementById('gatePass').value);
