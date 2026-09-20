@@ -110,7 +110,10 @@
   <div class="gate-box">
     <h2>🔒 شجرة آل محفوض/ظ</h2>
     <p>هذا المحتوى خاص بالعائلة. الرجاء إدخال كلمة المرور للمتابعة.</p>
-    <input type="password" id="gatePass" placeholder="كلمة المرور" style="width:100%; margin-bottom:10px;">
+    <input type="password" id="gatePass" placeholder="كلمة المرور" autocapitalize="off" autocorrect="off" spellcheck="false" style="width:100%; margin-bottom:6px;">
+    <label style="font-size:.78rem; color:#8a7355; display:block; margin-bottom:10px;">
+      <input type="checkbox" onclick="document.getElementById('gatePass').type=this.checked?'text':'password';" style="width:auto; vertical-align:middle;"> إظهار كلمة المرور
+    </label>
     <button class="btn-primary" style="width:100%;" onclick="checkGate()">دخول</button>
     <div class="gate-err" id="gateErr"></div>
   </div>
@@ -554,8 +557,21 @@ async function sha256hex(text){
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
   return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
 }
+function normalizeDigits(s){
+  // Arabic keyboards often type Arabic-Indic or Extended Arabic-Indic digits;
+  // normalize those (and stray whitespace) to plain Western digits before hashing,
+  // so the password still matches regardless of keyboard/language mode.
+  const arabicIndic = '٠١٢٣٤٥٦٧٨٩', extendedArabicIndic = '۰۱۲۳۴۵۶۷۸۹';
+  return s.trim().replace(/[٠-٩۰-۹]/g, ch=>{
+    let i = arabicIndic.indexOf(ch);
+    if(i>=0) return String(i);
+    i = extendedArabicIndic.indexOf(ch);
+    if(i>=0) return String(i);
+    return ch;
+  });
+}
 async function checkGate(){
-  const val = document.getElementById('gatePass').value;
+  const val = normalizeDigits(document.getElementById('gatePass').value);
   const h = await sha256hex(val);
   if(h === GATE_HASH){
     sessionStorage.setItem('mahfouz_gate_ok','1');
